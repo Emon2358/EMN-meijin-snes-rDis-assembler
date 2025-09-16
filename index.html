@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMN meijin - SNES Disassembler</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-touhou98@1.0.0/dist/touhou98.min.css">
+    
+    <style>
+        /* ページ全体にフォントとスタイルを適用 */
+        body {
+            font-family: 'Touhou98', monospace;
+            background-color: #000000;
+            color: #ffffff;
+            padding: 1em;
+            font-size: 16px;
+        }
+        .container {
+            border: 2px solid #ffffff;
+            padding: 1em;
+            max-width: 800px;
+            margin: auto;
+        }
+
+        /* ★★★ 変更点 ★★★ */
+        h1 {
+            font-family: 'Touhou98', monospace; /* フォントを明示的に指定 */
+            text-align: center;
+            border-bottom: 2px solid #ffffff;
+            padding-bottom: 0.5em;
+            text-shadow: 3px 3px #555555; /* レトロな影を追加 */
+            font-size: 2em; /* タイトルを少し大きく */
+        }
+        
+        /* ドラッグ＆ドロップエリアのスタイル */
+        #drop-zone {
+            border: 2px dashed #888888;
+            padding: 2em;
+            text-align: center;
+            transition: background-color 0.2s, border-color 0.2s;
+            cursor: pointer;
+        }
+        #drop-zone.dragover {
+            background-color: #333333;
+            border-color: #ffffff;
+        }
+        /* 結果表示エリアのスタイル */
+        #output { 
+            white-space: pre; 
+            background-color: #1a1a1a; 
+            padding: 1em; 
+            border: 1px solid #555;
+            max-height: 500px;
+            overflow-y: scroll;
+            margin-top: 1em;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>EMN meijin // SNES Disassembler</h1>
+        
+        <div id="drop-zone">
+            <p id="drop-text">ここにSNESのROMファイル (.sfc, .smc) を<br>ドラッグ＆ドロップしてください</p>
+        </div>
+
+        <pre id="output"></pre>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/snes-disassembler@1.0.1/dist/index.min.js"></script>
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const dropText = document.getElementById('drop-text');
+        const outputElement = document.getElementById('output');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file) return;
+
+            dropText.textContent = `読み込み中: ${file.name}`;
+            outputElement.textContent = '...';
+            
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const romData = new Uint8Array(e.target.result);
+                try {
+                    const disassembly = snesDisassembler.disassembleRom(romData);
+                    outputElement.textContent = disassembly;
+                    dropText.textContent = `完了: ${file.name}`;
+                } catch (error) {
+                    const errorMessage = `エラー: ${error.message}`;
+                    outputElement.textContent = errorMessage;
+                    dropText.textContent = 'ここにSNESのROMファイルを...';
+                    console.error(error);
+                }
+            };
+            
+            reader.onerror = () => {
+                const errorMessage = 'ファイルの読み込みに失敗しました。';
+                outputElement.textContent = errorMessage;
+                dropText.textContent = 'ここにSNESのROMファイルを...';
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
