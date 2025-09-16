@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-touhou98@1.0.0/dist/touhou98.min.css">
     
     <style>
-        /* ページ全体にフォントとスタイルを適用 */
         body {
             font-family: 'Touhou98', monospace;
             background-color: #000000;
@@ -22,18 +21,14 @@
             max-width: 800px;
             margin: auto;
         }
-
-        /* ★★★ 変更点 ★★★ */
         h1 {
-            font-family: 'Touhou98', monospace; /* フォントを明示的に指定 */
+            font-family: 'Touhou98', monospace;
             text-align: center;
             border-bottom: 2px solid #ffffff;
             padding-bottom: 0.5em;
-            text-shadow: 3px 3px #555555; /* レトロな影を追加 */
-            font-size: 2em; /* タイトルを少し大きく */
+            text-shadow: 3px 3px #555555;
+            font-size: 2em;
         }
-        
-        /* ドラッグ＆ドロップエリアのスタイル */
         #drop-zone {
             border: 2px dashed #888888;
             padding: 2em;
@@ -45,7 +40,6 @@
             background-color: #333333;
             border-color: #ffffff;
         }
-        /* 結果表示エリアのスタイル */
         #output { 
             white-space: pre; 
             background-color: #1a1a1a; 
@@ -70,7 +64,9 @@
         <pre id="output"></pre>
     </div>
 
+    <script>var exports = {};</script>
     <script src="https://cdn.jsdelivr.net/npm/snes-disassembler@1.0.1/dist/index.min.js"></script>
+
     <script>
         const dropZone = document.getElementById('drop-zone');
         const dropText = document.getElementById('drop-text');
@@ -116,7 +112,8 @@
             reader.onload = (e) => {
                 const romData = new Uint8Array(e.target.result);
                 try {
-                    const disassembly = snesDisassembler.disassembleRom(romData);
+                    // ★★★ 修正点2: snesDisassemblerの代わりに、exportsオブジェクトから関数を呼び出す ★★★
+                    const disassembly = exports.disassembleRom(romData);
                     outputElement.textContent = disassembly;
                     dropText.textContent = `完了: ${file.name}`;
                 } catch (error) {
