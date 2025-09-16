@@ -3,135 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMN meijin - SNES Disassembler</title>
+    <title>EMN meijin - Battle Background</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-touhou98@1.0.0/dist/touhou98.min.css">
     
     <style>
+        /* ページ全体にフォントとスタイルを適用 */
         body {
             font-family: 'Touhou98', monospace;
             background-color: #000000;
             color: #ffffff;
-            padding: 1em;
-            font-size: 16px;
+            margin: 0;
+            overflow: hidden; /* スクロールバーを消す */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
         .container {
             border: 2px solid #ffffff;
             padding: 1em;
-            max-width: 800px;
-            margin: auto;
+            background-color: rgba(0, 0, 0, 0.7); /* 背景が少し透けるように */
+            position: relative; /* z-indexを効かせるため */
+            z-index: 10;
         }
         h1 {
             font-family: 'Touhou98', monospace;
             text-align: center;
-            border-bottom: 2px solid #ffffff;
-            padding-bottom: 0.5em;
             text-shadow: 3px 3px #555555;
-            font-size: 2em;
+            font-size: 2.5em;
         }
-        #drop-zone {
-            border: 2px dashed #888888;
-            padding: 2em;
-            text-align: center;
-            transition: background-color 0.2s, border-color 0.2s;
-            cursor: pointer;
-        }
-        #drop-zone.dragover {
-            background-color: #333333;
-            border-color: #ffffff;
-        }
-        #output { 
-            white-space: pre; 
-            background-color: #1a1a1a; 
-            padding: 1em; 
-            border: 1px solid #555;
-            max-height: 500px;
-            overflow-y: scroll;
-            margin-top: 1em;
-            font-size: 14px;
+        /* 背景描画エリアのスタイル */
+        #battle-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* 文字より後ろに表示 */
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>EMN meijin // SNES Disassembler</h1>
-        
-        <div id="drop-zone">
-            <p id="drop-text">ここにSNESのROMファイル (.sfc, .smc) を<br>ドラッグ＆ドロップしてください</p>
-        </div>
+    <canvas id="battle-background"></canvas>
 
-        <pre id="output"></pre>
+    <div class="container">
+        <h1>EMN meijin</h1>
     </div>
 
-    <script>var exports = {};</script>
-    <script src="https://cdn.jsdelivr.net/npm/snes-disassembler@1.0.1/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/earthbound-battle-backgrounds-rollup@3.2.0/dist/earthbound-battle-backgrounds-rollup.umd.min.js"></script>
 
     <script>
-        const dropZone = document.getElementById('drop-zone');
-        const dropText = document.getElementById('drop-text');
-        const outputElement = document.getElementById('output');
+        // canvas要素を取得
+        const canvas = document.getElementById('battle-background');
 
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false);
-        });
+        // EarthBoundBattleBackgroundsオブジェクトをインスタンス化
+        // 第1引数: canvas要素, 第2引数: エフェクトのスタイル番号（0から255まで）
+        // ランダムな背景を選ぶ
+        const styleId = Math.floor(Math.random() * 256);
+        const eb = new EarthBoundBattleBackgrounds(canvas, styleId);
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
-        });
-
-        dropZone.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        }
-
-        function handleFile(file) {
-            if (!file) return;
-
-            dropText.textContent = `読み込み中: ${file.name}`;
-            outputElement.textContent = '...';
-            
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                const romData = new Uint8Array(e.target.result);
-                try {
-                    // ★★★ 修正点2: snesDisassemblerの代わりに、exportsオブジェクトから関数を呼び出す ★★★
-                    const disassembly = exports.disassembleRom(romData);
-                    outputElement.textContent = disassembly;
-                    dropText.textContent = `完了: ${file.name}`;
-                } catch (error) {
-                    const errorMessage = `エラー: ${error.message}`;
-                    outputElement.textContent = errorMessage;
-                    dropText.textContent = 'ここにSNESのROMファイルを...';
-                    console.error(error);
-                }
-            };
-            
-            reader.onerror = () => {
-                const errorMessage = 'ファイルの読み込みに失敗しました。';
-                outputElement.textContent = errorMessage;
-                dropText.textContent = 'ここにSNESのROMファイルを...';
-            };
-
-            reader.readAsArrayBuffer(file);
-        }
+        // アニメーションを開始
+        eb.start();
     </script>
 </body>
 </html>
