@@ -2,70 +2,151 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMN meijin - Battle Background</title>
+    <title>EMN meijin - JSNES Emulator</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-touhou98@1.0.0/dist/touhou98.min.css">
     
     <style>
-        /* ページ全体にフォントとスタイルを適用 */
         body {
             font-family: 'Touhou98', monospace;
-            background-color: #000000;
-            color: #ffffff;
-            margin: 0;
-            overflow: hidden; /* スクロールバーを消す */
+            background-color: #000;
+            color: #fff;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             height: 100vh;
-        }
-        .container {
-            border: 2px solid #ffffff;
-            padding: 1em;
-            background-color: rgba(0, 0, 0, 0.7); /* 背景が少し透けるように */
-            position: relative; /* z-indexを効かせるため */
-            z-index: 10;
+            margin: 0;
         }
         h1 {
             font-family: 'Touhou98', monospace;
-            text-align: center;
-            text-shadow: 3px 3px #555555;
-            font-size: 2.5em;
+            text-shadow: 2px 2px #555;
+            font-size: 2em;
+            margin-bottom: 1em;
         }
-        /* 背景描画エリアのスタイル */
-        #battle-background {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1; /* 文字より後ろに表示 */
+        #emulator-container {
+            border: 2px solid #fff;
+            padding: 1em;
+            background: #111;
+        }
+        canvas {
+            width: 512px;  /* 256px * 2 */
+            height: 480px; /* 240px * 2 */
+            image-rendering: pixelated; /* 拡大してもドット絵をクッキリ表示 */
+        }
+        #status {
+            margin-top: 1em;
+            text-align: center;
+        }
+        #controls-info {
+            margin-top: 0.5em;
+            font-size: 0.9em;
+            color: #bbb;
         }
     </style>
 </head>
 <body>
+    <h1>EMN meijin // NES EMULATOR</h1>
 
-    <canvas id="battle-background"></canvas>
-
-    <div class="container">
-        <h1>EMN meijin</h1>
+    <div id="emulator-container">
+        <canvas id="nes-canvas" width="256" height="240"></canvas>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/earthbound-battle-backgrounds-rollup@3.2.0/dist/earthbound-battle-backgrounds-rollup.umd.min.js"></script>
+    <div id="status">
+        <p>ここにNESのROMファイル (.nes) をドラッグ＆ドロップ</p>
+        <p id="controls-info">
+            [矢印キー]: 十字キー / [X]: Aボタン / [Z]: Bボタン / [Enter]: スタート / [Shift]: セレクト
+        </p>
+    </div>
+
+    <script type="text/javascript" src="https://unpkg.com/jsnes/dist/jsnes.min.js"></script>
 
     <script>
-        // canvas要素を取得
-        const canvas = document.getElementById('battle-background');
+        const canvas = document.getElementById('nes-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusElement = document.getElementById('status');
+        const SCREEN_WIDTH = 256;
+        const SCREEN_HEIGHT = 240;
 
-        // EarthBoundBattleBackgroundsオブジェクトをインスタンス化
-        // 第1引数: canvas要素, 第2引数: エフェクトのスタイル番号（0から255まで）
-        // ランダムな背景を選ぶ
-        const styleId = Math.floor(Math.random() * 256);
-        const eb = new EarthBoundBattleBackgrounds(canvas, styleId);
+        // 画面のピクセルデータをCanvasに描画するための準備
+        const imageData = ctx.createImageData(SCREEN_WIDTH, SCREEN_HEIGHT);
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-        // アニメーションを開始
-        eb.start();
+        // エミュレータのインスタンスを作成
+        const nes = new JSNES.NES({
+            onFrame: function(frameBuffer) {
+                // 1フレーム分のデータを受け取り、画面に描画する
+                for (let i = 0; i < frameBuffer.length; i++) {
+                    imageData.data[i] = frameBuffer[i];
+                }
+                ctx.putImageData(imageData, 0, 0);
+            },
+        });
+
+        // --- エミュレーションループ ---
+        let animationFrameId = null;
+        function onAnimationFrame() {
+            nes.frame();
+            animationFrameId = requestAnimationFrame(onAnimationFrame);
+        }
+
+        // --- ROM読み込み処理 ---
+        function loadROM(romData) {
+            statusElement.textContent = "ROMを読み込んでいます...";
+            try {
+                nes.loadROM(romData);
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                onAnimationFrame(); // ループ開始
+                statusElement.textContent = "ROMの読み込み完了";
+            } catch(e) {
+                statusElement.textContent = "エラー: ROMファイルの読み込みに失敗しました。";
+                console.error(e);
+            }
+        }
+
+        // --- ドラッグ＆ドロップ処理 ---
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    loadROM(event.target.result);
+                };
+                reader.readAsBinaryString(file);
+            }
+        });
+
+        // --- キーボード入力処理 ---
+        function onKeyDown(e) {
+            handleKey(e, true);
+        }
+        function onKeyUp(e) {
+            handleKey(e, false);
+        }
+
+        function handleKey(e, isPressed) {
+            const player = 1;
+            const buttonDown = isPressed ? nes.buttonDown : nes.buttonUp;
+            switch(e.key) {
+                case 'ArrowUp': buttonDown(player, JSNES.Controller.BUTTON_UP); break;
+                case 'ArrowDown': buttonDown(player, JSNES.Controller.BUTTON_DOWN); break;
+                case 'ArrowLeft': buttonDown(player, JSNES.Controller.BUTTON_LEFT); break;
+                case 'ArrowRight': buttonDown(player, JSNES.Controller.BUTTON_RIGHT); break;
+                case 'x': case 'X': buttonDown(player, JSNES.Controller.BUTTON_A); break;
+                case 'z': case 'Z': buttonDown(player, JSNES.Controller.BUTTON_B); break;
+                case 'Enter': buttonDown(player, JSNES.Controller.BUTTON_START); break;
+                case 'Shift': buttonDown(player, JSNES.Controller.BUTTON_SELECT); break;
+            }
+        }
+        
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+
     </script>
 </body>
 </html>
